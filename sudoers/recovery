@@ -1,0 +1,7 @@
+# Recovery least-privilege sudo policy
+# Created by Rafael Monge / EMPRETEL NETWORKS
+
+recovery ALL=(root) NOPASSWD: /opt/recovery/bin/recovery-backup-root-ssh
+recovery ALL=(root) NOPASSWD: /opt/recovery/bin/recovery-restore-root-ssh
+recovery ALL=(root) NOPASSWD: /opt/recovery/bin/recovery-check-root-ssh
+recovery ALL=(root) NOPASSWD: /opt/recovery/bin/recovery-doctor
