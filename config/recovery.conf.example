@@ -1,0 +1,5 @@
+# Recovery configuration
+
+RECOVERY_BASE="/opt/recovery"
+RECOVERY_RETENTION="5"
+RECOVERY_LOG="/var/log/recovery-ssh.log"

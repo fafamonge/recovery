@@ -1,0 +1,44 @@
+#!/bin/bash
+set -euo pipefail
+
+CONF="/etc/recovery/recovery.conf"
+
+# Defaults
+RECOVERY_BASE="/opt/recovery"
+RECOVERY_RETENTION="5"
+RECOVERY_LOG="/var/log/recovery-ssh.log"
+
+[ -f "$CONF" ] && source "$CONF"
+
+BACKUP_DIR="$RECOVERY_BASE/backups"
+AUTH_DIR="$RECOVERY_BASE/authorized_keys"
+
+TS="$(date +%Y%m%d_%H%M%S)"
+SNAP="$BACKUP_DIR/root.ssh.$TS.tar.gz"
+LATEST="$BACKUP_DIR/root.ssh.latest.tar.gz"
+
+log() {
+  echo "$(date -Is) recovery-backup-root-ssh $*" >> "$RECOVERY_LOG"
+}
+
+log "START"
+
+test -d /root/.ssh
+test -s /root/.ssh/authorized_keys
+
+install -d -m 700 -o root -g root "$BACKUP_DIR"
+install -d -m 700 -o root -g root "$AUTH_DIR"
+
+tar czf "$SNAP" -C /root .ssh
+cp -f "$SNAP" "$LATEST"
+cp -f /root/.ssh/authorized_keys "$AUTH_DIR/root.authorized_keys"
+
+chown root:root "$SNAP" "$LATEST" "$AUTH_DIR/root.authorized_keys"
+chmod 600 "$SNAP" "$LATEST" "$AUTH_DIR/root.authorized_keys"
+
+ls -1t "$BACKUP_DIR"/root.ssh.*.tar.gz 2>/dev/null \
+  | tail -n +"$((RECOVERY_RETENTION + 1))" \
+  | xargs -r rm -f
+
+log "OK $SNAP"
+echo "$SNAP"
