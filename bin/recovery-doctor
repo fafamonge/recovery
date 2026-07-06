@@ -22,10 +22,14 @@ id recovery 2>/dev/null || echo "[FAIL] recovery user not found"
 echo
 
 echo "== sudo policy =="
-if sudo -n -l 2>/dev/null | grep -q "$BIN_DIR/recovery-doctor"; then
-  echo "[OK] Recovery sudo policy is available"
+if [ "$(id -u)" -eq 0 ]; then
+  if [ "${SUDO_USER:-}" = "recovery" ]; then
+    echo "[OK] recovery user invoked this command through sudo"
+  else
+    echo "[OK] running with root privileges"
+  fi
 else
-  echo "[FAIL] Recovery sudo policy failed"
+  echo "[FAIL] recovery-doctor must be run with sudo/root privileges"
 fi
 echo
 
