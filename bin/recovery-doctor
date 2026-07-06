@@ -21,11 +21,11 @@ echo "== identity =="
 id recovery 2>/dev/null || echo "[FAIL] recovery user not found"
 echo
 
-echo "== sudo =="
-if sudo -n true 2>/dev/null; then
-  echo "[OK] sudo NOPASSWD works"
+echo "== sudo policy =="
+if sudo -n "$BIN_DIR/recovery-check-root-ssh" >/dev/null 2>&1; then
+  echo "[OK] Recovery sudo policy works"
 else
-  echo "[FAIL] sudo NOPASSWD failed"
+  echo "[FAIL] Recovery sudo policy failed"
 fi
 echo
 
