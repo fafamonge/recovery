@@ -1,0 +1,75 @@
+#!/bin/bash
+set -u
+
+CONF="/etc/recovery/recovery.conf"
+
+RECOVERY_BASE="/opt/recovery"
+RECOVERY_LOG="/var/log/recovery-ssh.log"
+
+[ -f "$CONF" ] && source "$CONF"
+
+BIN_DIR="$RECOVERY_BASE/bin"
+BACKUP_DIR="$RECOVERY_BASE/backups"
+AUTH_DIR="$RECOVERY_BASE/authorized_keys"
+
+echo "== recovery doctor =="
+echo "date: $(date -Is)"
+echo "host: $(hostname -f 2>/dev/null || hostname)"
+echo
+
+echo "== identity =="
+id recovery 2>/dev/null || echo "[FAIL] recovery user not found"
+echo
+
+echo "== sudo =="
+if sudo -n true 2>/dev/null; then
+  echo "[OK] sudo NOPASSWD works"
+else
+  echo "[FAIL] sudo NOPASSWD failed"
+fi
+echo
+
+echo "== recovery ssh =="
+stat -c "%a %U %G %n" /home/recovery /home/recovery/.ssh /home/recovery/.ssh/authorized_keys 2>/dev/null \
+  || echo "[FAIL] recovery SSH files missing or inaccessible"
+echo
+
+echo "== recovery directories =="
+stat -c "%a %U %G %n" "$RECOVERY_BASE" "$BIN_DIR" "$AUTH_DIR" "$BACKUP_DIR" 2>/dev/null \
+  || echo "[FAIL] one or more recovery directories missing"
+echo
+
+echo "== authorized_keys copies =="
+ls -lah "$AUTH_DIR" 2>/dev/null || echo "[FAIL] authorized_keys directory missing"
+echo
+
+echo "== root ssh backups =="
+ls -lah "$BACKUP_DIR" 2>/dev/null || echo "[FAIL] backup directory missing"
+
+if [ -s "$BACKUP_DIR/root.ssh.latest.tar.gz" ]; then
+  echo
+  echo "latest backup content:"
+  tar tzf "$BACKUP_DIR/root.ssh.latest.tar.gz" 2>/dev/null || echo "[FAIL] cannot read latest backup"
+else
+  echo "[WARN] latest root SSH backup is missing"
+fi
+echo
+
+echo "== root ssh check =="
+if command -v recovery-check-root-ssh >/dev/null 2>&1; then
+  recovery-check-root-ssh
+elif [ -x "$BIN_DIR/recovery-check-root-ssh" ]; then
+  "$BIN_DIR/recovery-check-root-ssh"
+else
+  echo "[FAIL] recovery-check-root-ssh not found"
+fi
+echo
+
+echo "== services =="
+systemctl is-active sshd 2>/dev/null || systemctl is-active ssh 2>/dev/null || true
+systemctl is-active auditd 2>/dev/null || true
+systemctl is-active ssh-blackbox 2>/dev/null || true
+echo
+
+echo "== recent recovery log =="
+tail -30 "$RECOVERY_LOG" 2>/dev/null || echo "[INFO] no recovery log found"
