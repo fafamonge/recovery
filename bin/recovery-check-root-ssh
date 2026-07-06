@@ -1,0 +1,88 @@
+#!/bin/bash
+set -u
+
+SSH_DIR="/root/.ssh"
+AUTH_KEYS="$SSH_DIR/authorized_keys"
+ERRORS=0
+
+echo "== root SSH check =="
+
+if [ ! -d "$SSH_DIR" ]; then
+  echo "[FAIL] $SSH_DIR does not exist"
+  exit 1
+fi
+
+echo
+echo "permissions:"
+stat -c "%a %U %G %n" "$SSH_DIR"
+
+DIR_MODE="$(stat -c '%a' "$SSH_DIR")"
+DIR_OWNER="$(stat -c '%U:%G' "$SSH_DIR")"
+
+if [ "$DIR_MODE" = "700" ]; then
+  echo "[OK] SSH directory mode: 700"
+else
+  echo "[WARN] SSH directory mode is $DIR_MODE; expected 700"
+  ERRORS=$((ERRORS + 1))
+fi
+
+if [ "$DIR_OWNER" = "root:root" ]; then
+  echo "[OK] SSH directory owner: root:root"
+else
+  echo "[WARN] SSH directory owner is $DIR_OWNER; expected root:root"
+  ERRORS=$((ERRORS + 1))
+fi
+
+if [ ! -f "$AUTH_KEYS" ]; then
+  echo
+  echo "[FAIL] $AUTH_KEYS does not exist"
+  exit 1
+fi
+
+if [ ! -s "$AUTH_KEYS" ]; then
+  echo
+  echo "[FAIL] $AUTH_KEYS is empty"
+  exit 1
+fi
+
+stat -c "%a %U %G %n" "$AUTH_KEYS"
+
+FILE_MODE="$(stat -c '%a' "$AUTH_KEYS")"
+FILE_OWNER="$(stat -c '%U:%G' "$AUTH_KEYS")"
+
+if [ "$FILE_MODE" = "600" ]; then
+  echo "[OK] authorized_keys mode: 600"
+else
+  echo "[WARN] authorized_keys mode is $FILE_MODE; expected 600"
+  ERRORS=$((ERRORS + 1))
+fi
+
+if [ "$FILE_OWNER" = "root:root" ]; then
+  echo "[OK] authorized_keys owner: root:root"
+else
+  echo "[WARN] authorized_keys owner is $FILE_OWNER; expected root:root"
+  ERRORS=$((ERRORS + 1))
+fi
+
+echo
+echo "keys:"
+KEY_COUNT="$(grep -cE '^(ssh-|ecdsa-)' "$AUTH_KEYS" || true)"
+echo "$KEY_COUNT"
+
+if [ "$KEY_COUNT" -eq 0 ]; then
+  echo "[WARN] No recognized SSH public keys found"
+  ERRORS=$((ERRORS + 1))
+fi
+
+echo
+echo "sha256:"
+sha256sum "$AUTH_KEYS"
+
+echo
+if [ "$ERRORS" -eq 0 ]; then
+  echo "[OK] root SSH configuration passed all checks"
+  exit 0
+else
+  echo "[WARN] root SSH configuration completed with $ERRORS warning(s)"
+  exit 2
+fi
