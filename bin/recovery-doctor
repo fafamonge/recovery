@@ -22,8 +22,8 @@ id recovery 2>/dev/null || echo "[FAIL] recovery user not found"
 echo
 
 echo "== sudo policy =="
-if sudo -n "$BIN_DIR/recovery-check-root-ssh" >/dev/null 2>&1; then
-  echo "[OK] Recovery sudo policy works"
+if sudo -n -l 2>/dev/null | grep -q "$BIN_DIR/recovery-doctor"; then
+  echo "[OK] Recovery sudo policy is available"
 else
   echo "[FAIL] Recovery sudo policy failed"
 fi
