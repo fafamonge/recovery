@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+
+CONF="/etc/recovery/recovery.conf"
+
+RECOVERY_BASE="/opt/recovery"
+RECOVERY_LOG="/var/log/recovery-ssh.log"
+
+[ -f "$CONF" ] && source "$CONF"
+
+BACKUP="$RECOVERY_BASE/backups/root.ssh.latest.tar.gz"
+FALLBACK="$RECOVERY_BASE/authorized_keys/root.authorized_keys"
+SSH_DIR="/root/.ssh"
+TS="$(date +%Y%m%d_%H%M%S)"
+PRE_RESTORE="/root/.ssh.pre_recovery_$TS"
+
+log() {
+  echo "$(date -Is) recovery-restore-root-ssh $*" >> "$RECOVERY_LOG"
+}
+
+log "START"
+
+if [ -d "$SSH_DIR" ]; then
+  mv "$SSH_DIR" "$PRE_RESTORE"
+  log "MOVED existing $SSH_DIR to $PRE_RESTORE"
+fi
+
+if [ -s "$BACKUP" ]; then
+  tar xzf "$BACKUP" -C /root
+  log "RESTORED from backup $BACKUP"
+else
+  test -s "$FALLBACK"
+  install -d -m 700 -o root -g root "$SSH_DIR"
+  cp -f "$FALLBACK" "$SSH_DIR/authorized_keys"
+  log "RESTORED from fallback $FALLBACK"
+fi
+
+chown -R root:root "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+find "$SSH_DIR" -type f -exec chmod 600 {} \;
+chmod 600 "$SSH_DIR/authorized_keys"
+
+stat -c "%a %U %G %n" "$SSH_DIR" "$SSH_DIR/authorized_keys" | tee -a "$RECOVERY_LOG"
+
+log "OK"
+echo "Recovery restore completed."
+[ -d "$PRE_RESTORE" ] && echo "Previous SSH directory preserved at: $PRE_RESTORE"
